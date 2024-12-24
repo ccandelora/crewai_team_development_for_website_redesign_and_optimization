@@ -1,0 +1,56 @@
+---
+website_crawl_and_analysis_task:
+  description: Crawl the current website at {current_website_url} to collect data
+    on layout, content structure, SEO performance, and loading speed. Identify strengths
+    and weaknesses.
+  expected_output: A detailed report highlighting the current website's strengths,
+    weaknesses, and recommended changes.
+  async_execution: false
+  agent: analysis_agent
+propose_design_task:
+  description: Using the analysis report, propose a modern design for the website
+    that aligns with {industry} trends, appeals to {target_audience}, and follows
+    {brand_guidelines}.
+  expected_output: Design mockups or wireframes for the redesigned website.
+  async_execution: false
+  agent: design_advisor_agent
+  context:
+  - website_crawl_and_analysis_task
+develop_frontend_code_task:
+  description: Develop responsive HTML, CSS, and JavaScript code based on the proposed
+    design for the redesigned website.
+  expected_output: Fully functional front-end code compatible with modern browsers
+    and devices.
+  async_execution: false
+  agent: code_generator_agent
+  context:
+  - propose_design_task
+create_visual_assets_task:
+  description: Generate visual assets such as logos, icons, and banners in accordance
+    with {brand_guidelines}.
+  expected_output: A collection of optimized images and design assets ready for integration.
+  async_execution: false
+  agent: asset_creator_agent
+content_optimization_task:
+  description: Rewrite or enhance the current website content to align with the new
+    design and ensure SEO optimization.
+  expected_output: Polished and SEO-optimized content ready for deployment on the
+    redesigned website.
+  async_execution: false
+  agent: content_refinement_agent
+website_testing_task:
+  description: Conduct thorough testing of the redesigned website to ensure functionality,
+    compatibility, and performance across different browsers and devices.
+  expected_output: A checklist of resolved and outstanding issues, with recommendations
+    for improvements.
+  async_execution: false
+  agent: quality_assurance_agent
+  context:
+  - develop_frontend_code_task
+project_coordination_task:
+  description: Manage the project's timeline and coordinate tasks among the agents.
+    Provide regular progress updates to the client.
+  expected_output: A project timeline and progress reports detailing the status of
+    each task and overall project completion.
+  async_execution: false
+  agent: project_manager_agent
