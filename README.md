@@ -1,54 +1,139 @@
-# CrewaiTeamDevelopmentForWebsiteRedesignAndOptimization Crew
+# Website Redesign and Optimization AI Team
 
-Welcome to the CrewaiTeamDevelopmentForWebsiteRedesignAndOptimization Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+This project implements an intelligent AI team for website redesign and optimization using [crewAI](https://crewai.com). The system employs multiple specialized AI agents working together to analyze, design, develop, and optimize websites.
+
+## Features
+
+- 🔍 **Automated Website Analysis**: Comprehensive analysis of existing websites for SEO, performance, and user experience
+- 🎨 **Intelligent Design Proposals**: AI-driven design recommendations based on industry standards and brand guidelines
+- 💻 **Automated Code Generation**: Creation of responsive, modern website code
+- 🖼️ **Visual Asset Creation**: Generation and optimization of website visual elements
+- 📝 **Content Optimization**: SEO-focused content refinement and optimization
+- ✅ **Quality Assurance**: Automated testing and quality verification
+- 📊 **Project Management**: Coordinated execution of the redesign process
+
+## Prerequisites
+
+- Python >=3.10 <=3.13
+- OpenAI API Key
+- Google Serper API Key (for web search capabilities)
 
 ## Installation
 
-Ensure you have Python >=3.10 <=3.13 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
+1. Clone the repository:
+   ```bash
+   git clone [repository-url]
+   cd crewai_team_development_for_website_redesign_and_optimization
+   ```
 
-First, if you haven't already, install uv:
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-```bash
-pip install uv
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and add your API keys:
+   ```
+   OPENAI_API_KEY=your_openai_api_key
+   SERPER_API_KEY=your_serper_api_key
+   ```
+
+## Configuration
+
+The project uses YAML files for configuration:
+
+- `config/config.yaml`: Define website details and brand guidelines
+- `config/agents.yaml`: Configure AI agent roles and capabilities
+- `config/tasks.yaml`: Define tasks and their dependencies
+
+### Customizing the Configuration
+
+1. Update `config/config.yaml` with your website details:
+   ```yaml
+   current_website_url: "http://your-website.com"
+   industry: "Your Industry"
+   target_audience: "Your Target Audience"
+   ```
+
+2. Modify brand guidelines in `config/config.yaml`:
+   ```yaml
+   brand_guidelines:
+     primary_colors:
+       - "#your-color-1"
+       - "#your-color-2"
+     typography:
+       headings: "Your Heading Font"
+       body: "Your Body Font"
+   ```
+
+## Usage
+
+1. Run the main script:
+   ```bash
+   python -m crewai_team_development_for_website_redesign_and_optimization.main
+   ```
+
+2. The system will:
+   - Analyze the specified website
+   - Generate design proposals
+   - Create website code
+   - Deploy to a local development server
+   - Generate a comprehensive report
+
+3. Access the results:
+   - Redesigned website: `http://localhost:8000`
+   - Project report: `output/report.md`
+   - Website files: `output/redesigned_site/`
+
+## Output Structure
+
+```
+output/
+├── redesigned_site/        # Generated website files
+│   ├── index.html         # Main HTML file
+│   ├── css/              # Stylesheet directory
+│   │   ├── styles.css
+│   │   └── responsive.css
+│   └── js/               # JavaScript directory
+│       └── main.js
+└── report.md             # Detailed project report
 ```
 
-Next, navigate to your project directory and install the dependencies:
+## Development
 
-(Optional) Lock the dependencies and install them by using the CLI command:
-```bash
-crewai install
-```
-### Customizing
+To contribute or modify the project:
 
-**Add your `OPENAI_API_KEY` into the `.env` file**
+1. Install in development mode:
+   ```bash
+   pip install -e .
+   ```
 
-- Modify `src/crewai_team_development_for_website_redesign_and_optimization/config/agents.yaml` to define your agents
-- Modify `src/crewai_team_development_for_website_redesign_and_optimization/config/tasks.yaml` to define your tasks
-- Modify `src/crewai_team_development_for_website_redesign_and_optimization/crew.py` to add your own logic, tools and specific args
-- Modify `src/crewai_team_development_for_website_redesign_and_optimization/main.py` to add custom inputs for your agents and tasks
+2. Modify agent behaviors in `src/crewai_team_development_for_website_redesign_and_optimization/main.py`
 
-## Running the Project
+3. Add new tools or capabilities in the tools directory
 
-To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
+## Troubleshooting
 
-```bash
-$ crewai run
-```
-
-This command initializes the crewai_team_development_for_website_redesign_and_optimization Crew, assembling the agents and assigning them tasks as defined in your configuration.
-
-This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
-
-## Understanding Your Crew
-
-The crewai_team_development_for_website_redesign_and_optimization Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.
+- **Server Issues**: If the local server doesn't start, check port 8000 availability
+- **API Errors**: Verify your API keys in the `.env` file
+- **Module Errors**: Ensure you're using a compatible Python version and all dependencies are installed
 
 ## Support
 
-For support, questions, or feedback regarding the CrewaiTeamDevelopmentForWebsiteRedesignAndOptimization Crew or crewAI.
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+For support and questions:
+- Create an issue in the repository
+- Visit [crewAI documentation](https://docs.crewai.com)
+- Join the [crewAI Discord](https://discord.com/invite/X4JWnZnxPb)
 
-Let's create wonders together with the power and simplicity of crewAI.
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
