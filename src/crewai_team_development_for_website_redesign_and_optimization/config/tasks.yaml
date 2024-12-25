@@ -1,56 +1,54 @@
 ---
 website_crawl_and_analysis_task:
-  description: Crawl the current website at {current_website_url} to collect data
-    on layout, content structure, SEO performance, and loading speed. Identify strengths
-    and weaknesses.
-  expected_output: A detailed report highlighting the current website's strengths,
-    weaknesses, and recommended changes.
-  async_execution: false
-  agent: analysis_agent
+  description: "Use the WebAnalyzer tool to crawl the current website at {current_website_url} to collect data on layout, content structure, SEO performance, and user experience."
+  agent: "analysis_agent"
+  expected_output: "A comprehensive analysis report of the current website"
+
 propose_design_task:
-  description: Using the analysis report, propose a modern design for the website
-    that aligns with {industry} trends, appeals to {target_audience}, and follows
-    {brand_guidelines}.
-  expected_output: Design mockups or wireframes for the redesigned website.
-  async_execution: false
-  agent: design_advisor_agent
-  context:
-  - website_crawl_and_analysis_task
+  description: "Use the DesignResearch tool to research and propose a modern design for the website that aligns with {industry} industry standards and appeals to {target_audience}."
+  agent: "design_advisor_agent"
+  expected_output: "A detailed design proposal with layout, color schemes, and user interaction patterns"
+  context: ["website_crawl_and_analysis_task"]
+
 develop_frontend_code_task:
-  description: Develop responsive HTML, CSS, and JavaScript code based on the proposed
-    design for the redesigned website.
-  expected_output: Fully functional front-end code compatible with modern browsers
-    and devices.
-  async_execution: false
-  agent: code_generator_agent
-  context:
-  - propose_design_task
+  description: |
+    Use the CodeGenerator tool to develop responsive HTML, CSS, and JavaScript code based on the proposed design.
+    The tool will automatically format the code as JSON with file paths and contents.
+    Do not modify the JSON output from the tool, pass it directly to the deployment task.
+  agent: "code_generator_agent"
+  expected_output: "JSON array containing file paths and contents for the website code"
+  context: ["propose_design_task"]
+
+deploy_website_task:
+  description: |
+    Use the Deployment tool to deploy the files to the local environment.
+    The input will be a JSON array from the frontend developer.
+    Pass the JSON directly to the Deployment tool without modification.
+    The tool will handle creating directories and saving files.
+  agent: "deployment_agent"
+  expected_output: "Successfully deployed website files with proper structure and permissions"
+  context: ["develop_frontend_code_task"]
+
 create_visual_assets_task:
-  description: Generate visual assets such as logos, icons, and banners in accordance
-    with {brand_guidelines}.
-  expected_output: A collection of optimized images and design assets ready for integration.
-  async_execution: false
-  agent: asset_creator_agent
-content_optimization_task:
-  description: Rewrite or enhance the current website content to align with the new
-    design and ensure SEO optimization.
-  expected_output: Polished and SEO-optimized content ready for deployment on the
-    redesigned website.
-  async_execution: false
-  agent: content_refinement_agent
-website_testing_task:
-  description: Conduct thorough testing of the redesigned website to ensure functionality,
-    compatibility, and performance across different browsers and devices.
-  expected_output: A checklist of resolved and outstanding issues, with recommendations
-    for improvements.
-  async_execution: false
-  agent: quality_assurance_agent
-  context:
-  - develop_frontend_code_task
-project_coordination_task:
-  description: Manage the project's timeline and coordinate tasks among the agents.
-    Provide regular progress updates to the client.
-  expected_output: A project timeline and progress reports detailing the status of
-    each task and overall project completion.
-  async_execution: false
-  agent: project_manager_agent
+  description: "Use the ImageGenerator tool to create visual assets such as logos, icons, and banners in accordance with {brand_guidelines}."
+  agent: "asset_creator_agent"
+  expected_output: "A complete set of optimized visual assets for the website"
+  context: ["propose_design_task"]
+
+optimize_content_task:
+  description: "Use the ContentAnalyzer tool to rewrite and enhance the current website content to align with the new design and ensure SEO optimization."
+  agent: "content_refinement_agent"
+  expected_output: "Optimized website content with improved SEO performance"
+  context: ["website_crawl_and_analysis_task", "propose_design_task"]
+
+test_website_task:
+  description: "Use the WebAnalyzer tool to conduct thorough testing of the redesigned website to ensure functionality, performance, and cross-browser compatibility."
+  agent: "quality_assurance_agent"
+  expected_output: "A comprehensive QA report with test results and recommendations"
+  context: ["deploy_website_task"]
+
+coordinate_project_task:
+  description: "Monitor and coordinate all tasks to ensure the website redesign process is completed efficiently."
+  agent: "project_manager_agent"
+  expected_output: "Project timeline, status updates, and final delivery report"
+  context: ["website_crawl_and_analysis_task", "propose_design_task", "develop_frontend_code_task", "create_visual_assets_task", "optimize_content_task", "test_website_task"]

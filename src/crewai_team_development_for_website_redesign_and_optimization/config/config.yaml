@@ -1,42 +1,35 @@
 ---
 # Website Configuration
-current_website_url: "https://mpas.boston"
+current_website_url: "http://localhost:8000"
 industry: "Professional Services"
-target_audience: "Police Officers, Police Departments, and Police Associations"
+target_audience: "Business professionals and potential clients"
 brand_guidelines:
   primary_colors:
-    - "#2C3E50"  # Dark Blue
-    - "#E74C3C"  # Red
+    - "#2C3E50"  # Dark blue
+    - "#3498DB"  # Light blue
+    - "#E74C3C"  # Red accent
   secondary_colors:
     - "#ECF0F1"  # Light Gray
     - "#95A5A6"  # Medium Gray
   typography:
-    heading_font: "Montserrat"
-    body_font: "Open Sans"
-  tone: "Professional and modern"
+    headings: "Open Sans"
+    body: "Roboto"
+  tone: "Professional and trustworthy"
   values:
-    - "Trustworthy"
-    - "Expert"
-    - "Innovative"
+    - "Expertise"
+    - "Reliability"
+    - "Innovation"
 
 # Tool Configuration
 tools:
-  website_analyzer:
-    - "web_scraper"
-    - "seo_analyzer"
-    - "performance_tester"
-  design_advisor:
-    - "design_research"
-    - "wireframe_creator"
-  frontend_developer:
-    - "code_generator"
-    - "compatibility_checker"
-  asset_creator:
-    - "image_generator"
-    - "asset_optimizer"
-  content_optimizer:
-    - "seo_writer"
-    - "content_analyzer"
-  quality_assurance:
-    - "testing_suite"
-    - "performance_monitor" 
+  analysis:
+    - "WebAnalyzer"
+  design:
+    - "DesignResearch"
+  development:
+    - "CodeGenerator"
+    - "Deployment"
+  content:
+    - "ContentAnalyzer"
+  testing:
+    - "WebAnalyzer" 

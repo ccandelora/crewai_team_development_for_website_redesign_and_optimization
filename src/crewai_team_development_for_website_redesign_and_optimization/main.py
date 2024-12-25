@@ -8,18 +8,13 @@ from langchain_community.utilities import GoogleSerperAPIWrapper
 from bs4 import BeautifulSoup
 import requests
 import os
-import http.server
-import socketserver
 import threading
 from dotenv import load_dotenv
+import json
+from flask import Flask, send_from_directory
 
 # Load environment variables
 load_dotenv()
-
-# Global variables for server
-PORT = 8000
-server_thread = None
-httpd = None
 
 class Config(BaseModel):
     current_website_url: str
@@ -28,322 +23,337 @@ class Config(BaseModel):
     brand_guidelines: Dict[str, Any]
     tools: Dict[str, List[str]]
 
+# Global variables for server
+PORT = 8000
+server_thread = None
+flask_app = Flask(__name__)
+website_directory = None
+
+@flask_app.route('/')
+def serve_index():
+    return send_from_directory(website_directory, 'index.html')
+
+@flask_app.route('/<path:path>')
+def serve_file(path):
+    return send_from_directory(website_directory, path)
+
 def start_local_server(directory: str):
-    """Start a local HTTP server in a separate thread."""
-    global server_thread, httpd
-    
-    class Handler(http.server.SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=directory, **kwargs)
+    """Start a Flask server in a separate thread."""
+    global server_thread, website_directory
     
     # Stop existing server if running
     stop_local_server()
     
+    # Set the website directory
+    website_directory = directory
+    
+    def run_flask():
+        flask_app.run(host='localhost', port=PORT, debug=False, use_reloader=False)
+    
     # Start new server
-    httpd = socketserver.TCPServer(("", PORT), Handler)
-    server_thread = threading.Thread(target=httpd.serve_forever)
+    server_thread = threading.Thread(target=run_flask)
     server_thread.daemon = True
     server_thread.start()
-    print(f"\nLocal server started at http://localhost:{PORT}")
+    print(f"\nFlask server started at http://localhost:{PORT}")
 
 def stop_local_server():
-    """Stop the local HTTP server if it's running."""
-    global server_thread, httpd
-    if httpd:
-        httpd.shutdown()
-        httpd.server_close()
+    """Stop the Flask server if it's running."""
+    global server_thread
+    if server_thread:
+        # Flask will be stopped when the thread is terminated
         server_thread = None
-        httpd = None
-        print("\nLocal server stopped")
+        print("\nFlask server stopped")
 
-def save_website_files(content: str) -> Path:
-    """
-    Parse the generated code and save each file in the redesigned_site folder.
-    Returns the path to the redesigned_site folder.
-    """
-    output_dir = Path(__file__).parent / "output" / "redesigned_site"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"\nSaving website files to: {output_dir}")
-    
-    # Split the content into separate files based on file markers
-    files = {}
-    current_file = None
-    current_content = []
-    
-    for line in content.split('\n'):
-        # Check for file markers like "// filename: example.html" or "/* filename: style.css */"
-        if '// filename:' in line or '/* filename:' in line:
-            # Save previous file if exists
-            if current_file:
-                files[current_file] = '\n'.join(current_content)
-                print(f"Prepared content for: {current_file}")
-            # Extract new filename
-            current_file = line.split('filename:')[1].strip().strip('*/ ')
-            current_content = []
-        else:
-            if current_file:
-                current_content.append(line)
-    
-    # Save the last file
-    if current_file and current_content:
-        files[current_file] = '\n'.join(current_content)
-        print(f"Prepared content for: {current_file}")
-    
-    # If no file markers found, assume it's a single HTML file
-    if not files:
-        files['index.html'] = content
-        print("No file markers found, saving as index.html")
-    
-    # Save all files
-    for filename, content in files.items():
-        file_path = output_dir / filename
-        # Create parent directories if they don't exist
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with open(file_path, 'w') as f:
-                f.write(content)
-            print(f"Successfully saved: {file_path}")
-        except Exception as e:
-            print(f"Error saving {filename}: {str(e)}")
-    
-    return output_dir
-
-def analyze_website(tool_input: str) -> str:
-    try:
-        url = tool_input.strip()
-        # Check if it's a local URL
-        if "localhost" in url or "127.0.0.1" in url:
-            if not server_thread:
-                return "Error: Local server is not running. Please start the server first."
+def generate_website_code(tool_input: str) -> str:
+    """Generate the actual website code."""
+    if "test" in tool_input.lower():
+        return """
+        // filename: tests/test_website.py
+        import pytest
+        from selenium import webdriver
+        from selenium.webdriver.common.by import By
         
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
+        @pytest.fixture
+        def browser():
+            driver = webdriver.Firefox()
+            yield driver
+            driver.quit()
         
-        # Basic analysis
-        title = soup.title.string if soup.title else "No title found"
-        meta_desc = soup.find('meta', {'name': 'description'})
-        meta_desc = meta_desc['content'] if meta_desc else "No meta description found"
-        
-        # Structure analysis
-        headings = len(soup.find_all(['h1', 'h2', 'h3']))
-        images = len(soup.find_all('img'))
-        links = len(soup.find_all('a'))
-        
-        analysis = f"""
-        Website Analysis for {url}:
-        Title: {title}
-        Meta Description: {meta_desc}
-        Structure:
-        - {headings} headings found
-        - {images} images found
-        - {links} links found
-        Performance: Response time was {response.elapsed.total_seconds():.2f} seconds
+        def test_homepage(browser):
+            browser.get('http://localhost:8000')
+            assert 'MPAS Boston' in browser.title
+            
+            # Test responsive design
+            browser.set_window_size(375, 667)  # Mobile size
+            nav = browser.find_element(By.CLASS_NAME, 'nav-links')
+            assert nav is not None
         """
-        return analysis
-    except Exception as e:
-        return f"Error analyzing website: {str(e)}"
+    else:
+        return """
+        // filename: app.py
+        from flask import Flask, render_template, send_from_directory
+        import os
+        
+        app = Flask(__name__)
+        
+        @app.route('/')
+        def home():
+            return render_template('index.html')
+        
+        if __name__ == '__main__':
+            app.run(host='localhost', port=8000)
+        
+        // filename: templates/index.html
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>MPAS Boston</title>
+            <meta name="description" content="Massachusetts Police Accreditation Solutions - Professional services for police departments">
+            <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+            <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+            <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
+        </head>
+        <body>
+            <header class="site-header">
+                <nav class="main-nav">
+                    <div class="logo">
+                        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="MPAS Boston Logo">
+                    </div>
+                    <ul class="nav-links">
+                        <li><a href="#services">Services</a></li>
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </nav>
+            </header>
+            
+            <main>
+                <section id="hero" class="hero-section">
+                    <h1>Massachusetts Police Accreditation Solutions</h1>
+                    <p>Professional services for police departments</p>
+                    <a href="#contact" class="cta-button">Get Started</a>
+                </section>
+            </main>
 
-def research_design(tool_input: str) -> str:
-    return f"Design research results for: {tool_input}"
+            <footer class="site-footer">
+                <p>&copy; 2024 MPAS Boston. All rights reserved.</p>
+            </footer>
+        </body>
+        </html>
 
-def generate_code(tool_input: str) -> str:
-    try:
-        # Parse the input to determine what needs to be generated
-        if "test" in tool_input.lower():
-            # Generate test code
-            return """
-            // filename: tests/test_website.js
-            const puppeteer = require('puppeteer');
+        // filename: static/css/styles.css
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #3498DB;
+            --accent-color: #E74C3C;
+            --text-color: #333;
+            --background-color: #FFF;
+        }
 
-            describe('Website Tests', () => {
-                let browser;
-                let page;
+        body {
+            font-family: 'Open Sans', sans-serif;
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
 
-                beforeAll(async () => {
-                    browser = await puppeteer.launch();
-                    page = await browser.newPage();
-                });
+        .site-header {
+            background: var(--background-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
 
-                afterAll(async () => {
-                    await browser.close();
-                });
+        .main-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
-                test('Homepage loads correctly', async () => {
-                    await page.goto('http://localhost:8000');
-                    const title = await page.title();
-                    expect(title).toBe('MPAS Boston');
-                });
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
 
-                test('Responsive design', async () => {
-                    await page.setViewport({ width: 375, height: 667 }); // Mobile
-                    // Add responsive design tests
-                });
-            });
-            """
-        else:
-            # Generate website code
-            return """
-            // filename: index.html
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>MPAS Boston</title>
-                <meta name="description" content="Massachusetts Police Accreditation Solutions - Professional services for police departments">
-                <link rel="stylesheet" href="css/styles.css">
-                <link rel="stylesheet" href="css/responsive.css">
-                <script defer src="js/main.js"></script>
-            </head>
-            <body>
-                <header class="site-header">
-                    <nav class="main-nav">
-                        <div class="logo">
-                            <img src="images/logo.svg" alt="MPAS Boston Logo">
-                        </div>
-                        <ul class="nav-links">
-                            <li><a href="#services">Services</a></li>
-                            <li><a href="#about">About</a></li>
-                            <li><a href="#contact">Contact</a></li>
-                        </ul>
-                    </nav>
-                </header>
-                
-                <main>
-                    <section id="hero" class="hero-section">
-                        <h1>Massachusetts Police Accreditation Solutions</h1>
-                        <p>Professional services for police departments</p>
-                        <a href="#contact" class="cta-button">Get Started</a>
-                    </section>
-                </main>
+        .nav-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
 
-                <footer class="site-footer">
-                    <p>&copy; 2024 MPAS Boston. All rights reserved.</p>
-                </footer>
-            </body>
-            </html>
+        .nav-links a:hover {
+            color: var(--secondary-color);
+        }
 
-            // filename: css/styles.css
-            :root {
-                --primary-color: #2C3E50;
-                --secondary-color: #3498DB;
-                --accent-color: #E74C3C;
-                --text-color: #333;
-                --background-color: #FFF;
-            }
+        .hero-section {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(rgba(44, 62, 80, 0.9), rgba(44, 62, 80, 0.9)),
+                        url('../images/hero-bg.jpg') center/cover;
+            color: var(--background-color);
+            margin-top: 60px;
+        }
 
-            body {
-                font-family: 'Open Sans', sans-serif;
-                color: var(--text-color);
-                margin: 0;
-                padding: 0;
-                line-height: 1.6;
-            }
-
-            .site-header {
-                background: var(--background-color);
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                position: fixed;
-                width: 100%;
-                top: 0;
-                z-index: 1000;
-            }
-
+        // filename: static/css/responsive.css
+        @media (max-width: 768px) {
             .main-nav {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 1rem 2rem;
-                max-width: 1200px;
-                margin: 0 auto;
+                flex-direction: column;
+                padding: 1rem;
             }
 
             .nav-links {
-                display: flex;
-                gap: 2rem;
-                list-style: none;
-            }
-
-            .nav-links a {
-                color: var(--primary-color);
-                text-decoration: none;
-                font-weight: 500;
-                transition: color 0.3s ease;
-            }
-
-            .nav-links a:hover {
-                color: var(--secondary-color);
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+                width: 100%;
             }
 
             .hero-section {
-                height: 100vh;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
-                padding: 2rem;
-                background: linear-gradient(rgba(44, 62, 80, 0.9), rgba(44, 62, 80, 0.9)),
-                            url('../images/hero-bg.jpg') center/cover;
-                color: var(--background-color);
+                height: auto;
+                min-height: 100vh;
+                padding: 4rem 1rem;
             }
+        }
 
-            // filename: css/responsive.css
-            @media (max-width: 768px) {
-                .main-nav {
-                    flex-direction: column;
-                    padding: 1rem;
-                }
-
-                .nav-links {
-                    flex-direction: column;
-                    gap: 1rem;
-                    text-align: center;
-                    width: 100%;
-                }
-
-                .hero-section {
-                    height: auto;
-                    min-height: 100vh;
-                    padding: 4rem 1rem;
-                }
-            }
-
-            // filename: js/main.js
-            document.addEventListener('DOMContentLoaded', function() {
-                // Smooth scrolling for navigation links
-                document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                    anchor.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        const target = document.querySelector(this.getAttribute('href'));
-                        if (target) {
-                            target.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start'
-                            });
-                        }
-                    });
+        // filename: static/js/main.js
+        document.addEventListener('DOMContentLoaded', function() {
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
                 });
-
-                // Mobile navigation toggle
-                const nav = document.querySelector('.nav-links');
-                const toggleButton = document.createElement('button');
-                toggleButton.classList.add('nav-toggle');
-                toggleButton.innerHTML = '☰';
-                toggleButton.addEventListener('click', () => {
-                    nav.classList.toggle('active');
-                });
-                document.querySelector('.main-nav').prepend(toggleButton);
             });
-            """
-    except Exception as e:
-        return f"Error generating code: {str(e)}"
+
+            // Mobile navigation toggle
+            const nav = document.querySelector('.nav-links');
+            const toggleButton = document.createElement('button');
+            toggleButton.classList.add('nav-toggle');
+            toggleButton.innerHTML = '☰';
+            toggleButton.addEventListener('click', () => {
+                nav.classList.toggle('active');
+            });
+            document.querySelector('.main-nav').prepend(toggleButton);
+        });
+        
+        // filename: requirements.txt
+        flask==3.0.0
+        pytest==8.0.0
+        selenium==4.16.0
+        """
 
 def generate_image(tool_input: str) -> str:
     return f"Generated image based on: {tool_input}"
 
 def analyze_content(tool_input: str) -> str:
     return f"Content analysis results for: {tool_input}"
+
+def deploy_files(tool_input: str) -> str:
+    """Deploy files to the local environment with Flask structure."""
+    try:
+        print(f"\nReceived deployment input:\n{tool_input}")
+        
+        # Parse the input as JSON
+        data = json.loads(tool_input)
+        
+        # Handle error case from code generator
+        if isinstance(data, dict):
+            if "error" in data:
+                return f"Cannot deploy: Code generator reported error: {data['error']}"
+            elif "type" in data and data["type"] == "code_generation":
+                files_data = data["files"]
+            else:
+                files_data = data
+        else:
+            files_data = data
+        
+        if not isinstance(files_data, list):
+            return "Invalid input format: Expected a JSON array of files"
+        
+        output_dir = Path(__file__).parent / "output" / "redesigned_site"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\nDeploying files to: {output_dir}")
+        
+        # Create Flask directory structure
+        (output_dir / "static").mkdir(exist_ok=True)
+        (output_dir / "templates").mkdir(exist_ok=True)
+        
+        deployed_files = []
+        for file_info in files_data:
+            if not isinstance(file_info, dict) or "path" not in file_info or "content" not in file_info:
+                print(f"Skipping invalid file info: {file_info}")
+                continue
+            
+            # Determine the correct path based on file type
+            file_path = output_dir
+            if file_info['path'].startswith('static/'):
+                file_path = output_dir / file_info['path']
+            elif file_info['path'].startswith('templates/'):
+                file_path = output_dir / file_info['path']
+            elif file_info['path'] == 'app.py':
+                file_path = output_dir / file_info['path']
+            elif file_info['path'].endswith('.html'):
+                file_path = output_dir / 'templates' / file_info['path']
+            elif file_info['path'].endswith(('.css', '.js', '.svg', '.jpg', '.png')):
+                file_path = output_dir / 'static' / file_info['path']
+            else:
+                file_path = output_dir / file_info['path']
+            
+            # Create parent directories if they don't exist
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            try:
+                with open(file_path, 'w') as f:
+                    f.write(file_info['content'].strip())
+                deployed_files.append(str(file_path))
+                print(f"Successfully deployed: {file_path}")
+            except Exception as e:
+                print(f"Error deploying {file_path}: {str(e)}")
+        
+        if not deployed_files:
+            return "No files were deployed. Check the input format."
+        
+        # Create requirements.txt if it doesn't exist
+        requirements_path = output_dir / "requirements.txt"
+        if not requirements_path.exists():
+            with open(requirements_path, 'w') as f:
+                f.write("flask==3.0.0\npytest==8.0.0\nselenium==4.16.0\n")
+            deployed_files.append(str(requirements_path))
+            print(f"Created requirements.txt")
+        
+        return f"Successfully deployed {len(deployed_files)} files:\n" + "\n".join(deployed_files)
+    except json.JSONDecodeError as e:
+        error_msg = f"Invalid JSON input: {str(e)}"
+        print(f"\nJSON decode error: {error_msg}")
+        print(f"Received input: {tool_input}")
+        return error_msg
+    except Exception as e:
+        error_msg = f"Error deploying files: {str(e)}"
+        print(f"\nDeployment error: {error_msg}")
+        return error_msg
 
 def create_agents(config: Config) -> Dict[str, Agent]:
     # Create tools
@@ -365,6 +375,12 @@ def create_agents(config: Config) -> Dict[str, Agent]:
         description="Generates HTML, CSS, and JavaScript code based on design specifications."
     )
     
+    deployment_tool = Tool(
+        name="Deployment",
+        func=deploy_files,
+        description="Deploys files to the local environment, creating necessary directories and handling file operations."
+    )
+    
     image_generator = Tool(
         name="ImageGenerator",
         func=generate_image,
@@ -377,6 +393,18 @@ def create_agents(config: Config) -> Dict[str, Agent]:
         description="Analyzes and optimizes content for SEO and engagement."
     )
     
+    # Default configuration for GPT-3.5-turbo
+    default_llm_config = {
+        "model": "gpt-3.5-turbo",
+        "temperature": 0.7
+    }
+    
+    # Only use GPT-4 for agents that really need it
+    gpt4_llm_config = {
+        "model": "gpt-4",
+        "temperature": 0.7
+    }
+    
     agents = {
         "analysis_agent": Agent(
             role='Website Analyzer',
@@ -385,7 +413,8 @@ def create_agents(config: Config) -> Dict[str, Agent]:
             performance optimization, and user experience.""",
             tools=[web_analyzer],
             verbose=True,
-            allow_delegation=True
+            allow_delegation=True,
+            llm_config=default_llm_config
         ),
         "design_advisor_agent": Agent(
             role='Design Advisor',
@@ -394,7 +423,8 @@ def create_agents(config: Config) -> Dict[str, Agent]:
             trends and user-centered design principles.""",
             tools=[design_research],
             verbose=True,
-            allow_delegation=True
+            allow_delegation=True,
+            llm_config=gpt4_llm_config  # Design needs GPT-4's capabilities
         ),
         "code_generator_agent": Agent(
             role='Frontend Developer',
@@ -406,8 +436,18 @@ def create_agents(config: Config) -> Dict[str, Agent]:
             tools=[code_generator],
             verbose=True,
             allow_delegation=True,
-            allow_code_execution=True,
-            max_retry_limit=3
+            llm_config=gpt4_llm_config  # Code generation needs GPT-4's capabilities
+        ),
+        "deployment_agent": Agent(
+            role='Deployment Specialist',
+            goal='Deploy and set up the website in the local environment',
+            backstory="""DevOps engineer specialized in website deployment and environment setup. 
+            You ensure all files are properly organized, permissions are set correctly, and the 
+            local development environment is configured optimally.""",
+            tools=[deployment_tool],
+            verbose=True,
+            allow_delegation=True,
+            llm_config=default_llm_config
         ),
         "asset_creator_agent": Agent(
             role='Visual Asset Creator',
@@ -416,7 +456,8 @@ def create_agents(config: Config) -> Dict[str, Agent]:
             consistency.""",
             tools=[image_generator],
             verbose=True,
-            allow_delegation=True
+            allow_delegation=True,
+            llm_config=default_llm_config
         ),
         "content_refinement_agent": Agent(
             role='Content Optimizer',
@@ -425,7 +466,8 @@ def create_agents(config: Config) -> Dict[str, Agent]:
             writing.""",
             tools=[content_analyzer],
             verbose=True,
-            allow_delegation=True
+            allow_delegation=True,
+            llm_config=default_llm_config
         ),
         "quality_assurance_agent": Agent(
             role='QA Specialist',
@@ -436,7 +478,7 @@ def create_agents(config: Config) -> Dict[str, Agent]:
             tools=[web_analyzer],
             verbose=True,
             allow_delegation=True,
-            allow_code_execution=True
+            llm_config=default_llm_config
         ),
         "project_manager_agent": Agent(
             role='Project Manager',
@@ -445,7 +487,8 @@ def create_agents(config: Config) -> Dict[str, Agent]:
             successful website launches""",
             tools=[],
             verbose=True,
-            allow_delegation=True
+            allow_delegation=True,
+            llm_config=default_llm_config
         )
     }
     return agents
@@ -537,6 +580,107 @@ def format_report(results: List[Any]) -> str:
     
     return report
 
+def analyze_website(tool_input: str) -> str:
+    try:
+        url = tool_input.strip()
+        # Check if it's a local URL
+        if "localhost" in url:
+            if not server_thread:
+                return "Error: Local server is not running. Please start the server first."
+        
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Basic analysis
+        title = soup.title.string if soup.title else "No title found"
+        meta_desc = soup.find('meta', {'name': 'description'})
+        meta_desc = meta_desc['content'] if meta_desc else "No meta description found"
+        
+        # Structure analysis
+        headings = len(soup.find_all(['h1', 'h2', 'h3']))
+        images = len(soup.find_all('img'))
+        links = len(soup.find_all('a'))
+        
+        analysis = f"""
+        Website Analysis for {url}:
+        Title: {title}
+        Meta Description: {meta_desc}
+        Structure:
+        - {headings} headings found
+        - {images} images found
+        - {links} links found
+        Performance: Response time was {response.elapsed.total_seconds():.2f} seconds
+        """
+        return analysis
+    except Exception as e:
+        return f"Error analyzing website: {str(e)}"
+
+def research_design(tool_input: str) -> str:
+    return f"Design research results for: {tool_input}"
+
+def parse_code_output(code_content: str) -> List[Dict[str, str]]:
+    """Parse code output with file markers into a list of file objects."""
+    files = []
+    current_file = None
+    current_content = []
+    
+    for line in code_content.split('\n'):
+        # Check for file markers
+        if '// filename:' in line or '/* filename:' in line:
+            # Save previous file if exists
+            if current_file:
+                files.append({
+                    'path': current_file,
+                    'content': '\n'.join(current_content)
+                })
+            # Extract new filename
+            current_file = line.split('filename:')[1].strip().strip('*/ ')
+            current_content = []
+        else:
+            if current_file:
+                current_content.append(line)
+    
+    # Save the last file
+    if current_file and current_content:
+        files.append({
+            'path': current_file,
+            'content': '\n'.join(current_content)
+        })
+    
+    # If no file markers found, assume it's a single HTML file
+    if not files:
+        files.append({
+            'path': 'index.html',
+            'content': code_content
+        })
+    
+    return files
+
+def generate_code(tool_input: str) -> str:
+    """Generate website code and return it as a JSON array of files."""
+    try:
+        # Generate the code as before
+        code_content = generate_website_code(tool_input)
+        
+        # Parse the code into file objects
+        files = parse_code_output(code_content)
+        
+        # Convert to JSON for the deployment agent
+        json_output = json.dumps(files, indent=2)
+        print(f"\nGenerated JSON output for deployment:\n{json_output}")
+        
+        # Return a properly formatted task result that includes both the JSON and a description
+        result = {
+            "type": "code_generation",
+            "files": files,
+            "message": f"Generated {len(files)} files for deployment"
+        }
+        return json.dumps(result)
+    except Exception as e:
+        error_msg = f"Error generating code: {str(e)}"
+        print(f"\nError in generate_code: {error_msg}")
+        return json.dumps({"error": error_msg})
+
 def main():
     print("\nStarting Website Redesign Project...")
     
@@ -567,18 +711,15 @@ def main():
         results = crew.kickoff()
         print("\nAll tasks completed. Processing results...")
         
-        # Extract HTML content from frontend developer's output
-        frontend_result = next((r for r in results if isinstance(r, str) and "<!DOCTYPE html>" in r), None)
-        if frontend_result:
-            website_dir = save_website_files(frontend_result)
-            print(f"\nWebsite files saved to: {website_dir}")
-            
+        # The deployment agent will handle file creation, so we just need to start the server
+        website_dir = Path(__file__).parent / "output" / "redesigned_site"
+        if website_dir.exists():
             # Start local server
             start_local_server(str(website_dir))
             print("\nYou can now view the redesigned website at:")
             print(f"http://localhost:{PORT}")
         else:
-            print("\nWarning: No website content found in the results")
+            print("\nWarning: Website directory not found. Check the deployment agent's logs for details.")
         
         # Generate and save the report
         report_content = format_report(results)

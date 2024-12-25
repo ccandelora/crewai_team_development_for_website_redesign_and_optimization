@@ -1,0 +1,66 @@
+:root {
+--primary-color: #2C3E50;
+--secondary-color: #3498DB;
+--accent-color: #E74C3C;
+--text-color: #333;
+--background-color: #FFF;
+}
+
+body {
+font-family: 'Open Sans', sans-serif;
+color: var(--text-color);
+margin: 0;
+padding: 0;
+line-height: 1.6;
+}
+
+.site-header {
+background: var(--background-color);
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+position: fixed;
+width: 100%;
+top: 0;
+z-index: 1000;
+}
+
+.main-nav {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 1rem 2rem;
+max-width: 1200px;
+margin: 0 auto;
+}
+
+.nav-links {
+display: flex;
+gap: 2rem;
+list-style: none;
+margin: 0;
+padding: 0;
+}
+
+.nav-links a {
+color: var(--primary-color);
+text-decoration: none;
+font-weight: 500;
+transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+color: var(--secondary-color);
+}
+
+.hero-section {
+height: 100vh;
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+text-align: center;
+padding: 2rem;
+background: linear-gradient(rgba(44, 62, 80, 0.9), rgba(44, 62, 80, 0.9)),
+url('../images/hero-bg.jpg') center/cover;
+color: var(--background-color);
+margin-top: 60px;
+}
